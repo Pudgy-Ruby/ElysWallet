@@ -4,7 +4,6 @@ import crypto from "crypto";
 import React, { useState } from "react";
 import { useRouter } from 'next/router';
 
-
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");

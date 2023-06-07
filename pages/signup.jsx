@@ -5,9 +5,11 @@ import React, { useState } from "react";
 import CryptoJS from "crypto-js";
 import crypto from "crypto";
 import { Secp256k1HdWallet } from "@cosmjs/launchpad";
+import { useRouter } from 'next/router';
 const PREFIX = "elys";
 
 export default function SignupPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordagain, setPasswordAgain] = useState("");
@@ -53,6 +55,7 @@ export default function SignupPage() {
             // Update the state with the retrieved profiles
             setStore("users", [bodyObject]);
         }
+        router.push("/");
         setMsg("Success");
     }
     const inputChange = (event) => {
