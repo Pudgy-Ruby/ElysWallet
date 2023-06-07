@@ -8,7 +8,7 @@ import CryptoJS from "crypto-js";
 
 export default async function handler(req, res) {
   if (req.method == "POST") {
-    const username = req.body["username"];
+    const email = req.body["email"];
     const password = req.body["password"];
     const passwordagain = req.body["passwordagain"];
     if (password != passwordagain) {
@@ -19,10 +19,10 @@ export default async function handler(req, res) {
     const db = client.db("Users");
     const users = await db
       .collection("Profiles")
-      .find({ Username: username })
+      .find({ Username: email })
       .toArray();
     if (users.length > 0) {
-      res.redirect("/signup?msg=A user already has this username");
+      res.redirect("/signup?msg=A user already has this email");
       return;
     }
 
@@ -34,14 +34,14 @@ export default async function handler(req, res) {
 
     const currentDate = new Date().toUTCString();
     const bodyObject = {
-      Username: username,
+      Username: email,
       Password: password_hash,
       Created: currentDate,
       Encrypted: encrypted,
     };
     await db.collection("Profiles").insertOne(bodyObject);
     const cookies = new Cookies(req, res);
-    cookies.set("username", username);
+    cookies.set("email", email);
     res.redirect("/");
   } else {
     res.redirect("/");

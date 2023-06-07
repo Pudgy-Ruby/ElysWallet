@@ -10,11 +10,30 @@ import { PREFIX, RPC_ENDPOINT, elysDemon } from "./constants/constants";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningStargateClient } from "@cosmjs/stargate";
 
-export default function ProfilePage({ username, created, encrypted }) {
+export default function ProfilePage({ email, created, encrypted }) {
   const [password, setPassword] = useState("");
+  const [balanceFrom, setBalanceFrom] = useState("");
+  const [balanceTo, setBalanceTo] = useState("");
+  const [status, setStatus] = useState("");
+  const [statusDecrypt, setDecryptStatus] = useState("");
+  const [addressFrom, setAddressFrom] = useState("");
+  const [addressTo, setAddressTo] = useState("");
+  const [amountTo, setAmountTo] = useState("");
+  const [isDecrypt, setDecrypt] = useState(false);
+
   const inputChange = (event) => {
     const { name, value } = event.target;
-    setPassword(value);
+
+    console.log("name", name);
+    if (name == "password") {
+      setPassword(value);
+    } else if (name == "addressTo") {
+      setAddressTo(value);
+    } else if (name == "amountTo") {
+      setAmountTo(value);
+    } else if (name == "balanceTo") {
+      setBalanceTo(value);
+    }
   };
   const decrypt = async () => {
     const password_hash = crypto
@@ -22,14 +41,13 @@ export default function ProfilePage({ username, created, encrypted }) {
       .update(password)
       .digest("hex");
 
-    console.log("!@#", password_hash, encrypted);
     try {
+      setDecryptStatus("Decrypting...");
       const bytes = CryptoJS.AES.decrypt(encrypted, password_hash);
 
       var decryptedMnemonic = bytes.toString(CryptoJS.enc.Utf8);
       if (decryptedMnemonic.length == 0) {
-        // res.redirect("/login?msg=Incorrect username or password");
-        console.log("aaa");
+        setDecryptStatus("Failed...");
         return {
           redirect: {
             permanent: false,
@@ -42,6 +60,75 @@ export default function ProfilePage({ username, created, encrypted }) {
         prefix: PREFIX,
       });
       const [account] = await wallet.getAccounts();
+
+      setAddressFrom(account.address);
+
+      const aliceSigner = await DirectSecp256k1HdWallet.fromMnemonic(
+        decryptedMnemonic,
+        { prefix: PREFIX }
+      );
+      const client = await SigningStargateClient.connectWithSigner(
+        RPC_ENDPOINT,
+        aliceSigner,
+        {
+          gasPrice: GasPrice.fromString("0.025" + elysDemon),
+          gasLimits: { send: 100000 },
+          headers: {
+            "Access-Control-Allow-Headers": "Content-Type"
+          }
+        },
+      );
+
+      client.headers = { "Access-Control-Allow-Headers": "Content-Type" };
+
+      const balanceFrom = await client.getAllBalances(
+        account.address
+      );
+      if (balanceFrom.length > 0) {
+        setBalanceFrom(balanceFrom[0].amount);
+      } else {
+        setBalanceFrom("0");
+      }
+      setDecryptStatus("Succeeded...");
+      setDecrypt(true);
+    } catch (error) {
+      setDecryptStatus("Failed...");
+      setDecrypt(false);
+      return {
+        redirect: {
+          permanent: false,
+          destination: "/",
+        },
+      };
+    }
+  };
+
+  const transfer = async () => {
+    const password_hash = crypto
+      .createHash("sha256")
+      .update(password)
+      .digest("hex");
+
+    try {
+      const bytes = CryptoJS.AES.decrypt(encrypted, password_hash);
+
+      var decryptedMnemonic = bytes.toString(CryptoJS.enc.Utf8);
+      if (decryptedMnemonic.length == 0) {
+
+        return {
+          redirect: {
+            permanent: false,
+            destination: "/",
+          },
+        };
+      }
+
+      const wallet = await Secp256k1HdWallet.fromMnemonic(decryptedMnemonic, {
+        prefix: PREFIX,
+      });
+      const [account] = await wallet.getAccounts();
+
+      setAddressFrom(account.address);
 
       const aliceSigner = await DirectSecp256k1HdWallet.fromMnemonic(
         decryptedMnemonic,
@@ -57,27 +144,45 @@ export default function ProfilePage({ username, created, encrypted }) {
             "content-type": "application/json",
           }
         },
-        
+
       );
 
-      const balanceBefore = await client.getAllBalancesUnverified(
+      setStatus("Sending...");
+      console.log(account.address, addressTo, amountTo);
+      const fee = { amount: [{ denom: "uelys", amount: "2000", },], gas: "180000", };
+
+      const result = await client.sendTokens(account.address, addressTo, [{ denom: "uelys", amount: "2000", },], fee, "Test");
+
+      const tx = await client.getTx(result.transactionHash);
+      console.log(tx);
+      if (tx.code === 0) {
+        setStatus("Sent...");
+      } else {
+        setStatus("Failed...");
+      }
+
+      const balanceFrom = await client.getAllBalances(
         account.address
       );
+      const balanceTo = await client.getAllBalances(
+        addressTo
+      );
+      if (balanceFrom.length > 0) {
+        setBalanceFrom(balanceFrom[0].amount);
+      } else {
+        setBalanceFrom("0");
+      }
 
-      console.log(balanceBefore);
-      //   if (balanceBefore.length > 0) {
-      //     this.setState({ balanceFrom: balanceBefore[0].amount });
-      //   } else {
-      //     this.setState({ balanceFrom: "0" });
-      //   }
+      if (balanceTo.length > 0) {
+        setBalanceTo(balanceTo[0].amount);
+      } else {
+        setBalanceTo("0");
+      }
 
-      //   this.setState({
-      //     _mnemonic: decryptedMnemonic,
-      //     address: account.address,
-      //     isRecovered: true,
-      //   });
+      setDecrypt(true);
     } catch (error) {
-      console.log("bbb");
+      setStatus("Failed...");
+      console.log("error", error);
       return {
         redirect: {
           permanent: false,
@@ -90,7 +195,7 @@ export default function ProfilePage({ username, created, encrypted }) {
     <Layout pageTitle="Profile">
       <Link href="/">Home</Link>
       <br />
-      <h2>{username}'s Profile</h2>
+      <h2>{email}'s Profile</h2>
       <p>
         Account created at <strong>{created}</strong>
       </p>
@@ -109,7 +214,7 @@ export default function ProfilePage({ username, created, encrypted }) {
         <div className="col-sm-3 mb-2">
           <input
             type="text"
-            value={""}
+            value={addressFrom}
             autoComplete="on"
             name="address"
             onChange={(e) => {
@@ -125,7 +230,7 @@ export default function ProfilePage({ username, created, encrypted }) {
         <div className="col-sm-3 mb-2">
           <input
             type="text"
-            value={""}
+            value={balanceFrom}
             autoComplete="on"
             name="balance"
             onChange={(e) => {
@@ -156,6 +261,60 @@ export default function ProfilePage({ username, created, encrypted }) {
         <div className="col-sm-3 mb-2">
           <button onClick={decrypt}>Decrypt</button>
         </div>
+        {<span className="red">{statusDecrypt}</span>}
+        {isDecrypt && (<>
+          <div className="col-sm-3 mb-2">
+            <input
+              type="text"
+              value={amountTo}
+              autoComplete="on"
+              name="amountTo"
+              onChange={(e) => {
+                inputChange(e);
+              }}
+              className="form-control"
+              id="amountTo"
+              placeholder="Amount to send"
+            />
+          </div>
+
+          <div className="col-sm-3 mb-2 m-2">
+            <input
+              type="text"
+              value={addressTo}
+              autoComplete="on"
+              name="addressTo"
+              onChange={(e) => {
+                inputChange(e);
+              }}
+              className="form-control"
+              id="addressTo"
+              placeholder="Address To Send Elys"
+            />
+          </div>
+
+          <div className="col-sm-3 mb-2">
+            <input
+              type="text"
+              value={balanceTo}
+              autoComplete="on"
+              name="balanceTo"
+              onChange={(e) => {
+                inputChange(e);
+              }}
+              className="form-control"
+              id="balanceTo"
+              placeholder="Balance To"
+              disabled
+            />
+          </div>
+
+          <div className="col-sm-3 mb-2">
+            <button onClick={transfer}>Transfer</button>
+
+          </div>
+          {<span className="red">{status}</span>}
+        </>)}
       </div>
     </Layout>
   );
@@ -164,8 +323,8 @@ export default function ProfilePage({ username, created, encrypted }) {
 export async function getServerSideProps(context) {
   const req = context.req;
   const res = context.res;
-  var username = getCookie("username", { req, res });
-  if (username == undefined) {
+  var email = getCookie("email", { req, res });
+  if (email == undefined) {
     return {
       redirect: {
         permanent: false,
@@ -177,12 +336,12 @@ export async function getServerSideProps(context) {
   const db = client.db("Users");
   const users = await db
     .collection("Profiles")
-    .find({ Username: username })
+    .find({ Username: email })
     .toArray();
   const userdoc = users[0];
   const created = userdoc["Created"];
   const encrypted = userdoc["Encrypted"];
   return {
-    props: { username: username, created: created, encrypted: encrypted },
+    props: { email: email, created: created, encrypted: encrypted },
   };
 }
