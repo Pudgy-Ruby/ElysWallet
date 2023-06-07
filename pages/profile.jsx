@@ -1,18 +1,22 @@
 import Layout from "../components/layout";
-import { getCookie } from "cookies-next";
 import Link from "next/link";
-import clientPromise from "../lib/mongodb";
 import React, { useState } from "react";
 import crypto from "crypto";
 import CryptoJS from "crypto-js";
 import { GasPrice, Secp256k1HdWallet } from "@cosmjs/launchpad";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningStargateClient } from "@cosmjs/stargate";
+import { useRouter } from 'next/router';
+
 const elysDemon = "uelys";
 const RPC_ENDPOINT = "https://rpc.testnet.elys.network/";
 const PREFIX = "elys";
 
-export default function ProfilePage({ email, created, encrypted }) {
+export default function ProfilePage() {
+
+  const router = useRouter();
+  const { email, created, encrypted } = router.query;
+
   const [password, setPassword] = useState("");
   const [balanceFrom, setBalanceFrom] = useState("");
   const [balanceTo, setBalanceTo] = useState("");
@@ -26,7 +30,6 @@ export default function ProfilePage({ email, created, encrypted }) {
   const inputChange = (event) => {
     const { name, value } = event.target;
 
-    console.log("name", name);
     if (name == "password") {
       setPassword(value);
     } else if (name == "addressTo") {
@@ -50,12 +53,7 @@ export default function ProfilePage({ email, created, encrypted }) {
       var decryptedMnemonic = bytes.toString(CryptoJS.enc.Utf8);
       if (decryptedMnemonic.length == 0) {
         setDecryptStatus("Failed...");
-        return {
-          redirect: {
-            permanent: false,
-            destination: "/",
-          },
-        };
+
       }
 
       const wallet = await Secp256k1HdWallet.fromMnemonic(decryptedMnemonic, {
@@ -150,7 +148,6 @@ export default function ProfilePage({ email, created, encrypted }) {
       );
 
       setStatus("Sending...");
-      console.log(account.address, addressTo, amountTo);
       const fee = { amount: [{ denom: "uelys", amount: "2000", },], gas: "180000", };
 
       const result = await client.sendTokens(account.address, addressTo, [{ denom: "uelys", amount: "2000", },], fee, "Test");
@@ -184,7 +181,6 @@ export default function ProfilePage({ email, created, encrypted }) {
       setDecrypt(true);
     } catch (error) {
       setStatus("Failed...");
-      console.log("error", error);
       return {
         redirect: {
           permanent: false,
@@ -322,28 +318,7 @@ export default function ProfilePage({ email, created, encrypted }) {
   );
 }
 
-export async function getServerSideProps(context) {
-  const req = context.req;
-  const res = context.res;
-  var email = getCookie("email", { req, res });
-  if (email == undefined) {
-    return {
-      redirect: {
-        permanent: false,
-        destination: "/",
-      },
-    };
-  }
-  const client = await clientPromise;
-  const db = client.db("Users");
-  const users = await db
-    .collection("Profiles")
-    .find({ Username: email })
-    .toArray();
-  const userdoc = users[0];
-  const created = userdoc["Created"];
-  const encrypted = userdoc["Encrypted"];
-  return {
-    props: { email: email, created: created, encrypted: encrypted },
-  };
-}
+const getStore = (name) => {
+  if (!name) return;
+  return JSON.parse(window.localStorage.getItem(name));
+};
