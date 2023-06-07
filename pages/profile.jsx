@@ -6,9 +6,11 @@ import React, { useState } from "react";
 import crypto from "crypto";
 import CryptoJS from "crypto-js";
 import { GasPrice, Secp256k1HdWallet } from "@cosmjs/launchpad";
-import { PREFIX, RPC_ENDPOINT, elysDemon } from "./constants/constants";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { SigningStargateClient } from "@cosmjs/stargate";
+const elysDemon = "uelys";
+const RPC_ENDPOINT = "https://rpc.testnet.elys.network/";
+const PREFIX = "elys";
 
 export default function ProfilePage({ email, created, encrypted }) {
   const [password, setPassword] = useState("");
