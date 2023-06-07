@@ -2,10 +2,9 @@ import Cookies from "cookies";
 import clientPromise from "../../lib/mongodb";
 const { createHash } = require("node:crypto");
 import { Secp256k1HdWallet } from "@cosmjs/launchpad";
-import { Buffer } from "buffer";
-import { PREFIX } from "../constants/constants";
 import CryptoJS from "crypto-js";
 
+const PREFIX = "elys";
 export default async function handler(req, res) {
   if (req.method == "POST") {
     const email = req.body["email"];
