@@ -3,7 +3,6 @@ import Head from 'next/head';
 export const siteTitle = "Login Signup Nextjs";
 
 export default function Layout({ pageTitle, children }) {
-  const title = "Login Signup Nextjs";
   return (
     <div>
       <Head>
