@@ -46,6 +46,7 @@ export default function ProfilePage() {
       .update(password)
       .digest("hex");
 
+      var balanceFrom;
     try {
       setDecryptStatus("Decrypting...");
       const bytes = CryptoJS.AES.decrypt(encrypted, password_hash);
@@ -55,40 +56,37 @@ export default function ProfilePage() {
         setDecryptStatus("Failed...");
 
       }
-
-      const wallet = await Secp256k1HdWallet.fromMnemonic(decryptedMnemonic, {
-        prefix: PREFIX,
-      });
-      const [account] = await wallet.getAccounts();
-
-      setAddressFrom(account.address);
-
-      const aliceSigner = await DirectSecp256k1HdWallet.fromMnemonic(
-        decryptedMnemonic,
-        { prefix: PREFIX }
-      );
-      const client = await SigningStargateClient.connectWithSigner(
-        RPC_ENDPOINT,
-        aliceSigner,
-        {
-          gasPrice: GasPrice.fromString("0.025" + elysDemon),
-          gasLimits: { send: 100000 },
+      try {
+        const requestBody = {
+          decryptedMnemonic: decryptedMnemonic,
+        };
+  
+        const response = await fetch('/api/decrypt', {
+          method: 'POST',
           headers: {
-            "Access-Control-Allow-Headers": "Content-Type"
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+  
+        if (response.ok) {
+          const res = await response.json();
+          setAddressFrom(res.address);
+          if (res.balanceFrom.length > 0) {
+            setBalanceFrom(res.balanceFrom[0].amount);
+          } else {
+            setBalanceFrom("0");
           }
-        },
-      );
-
-      client.headers = { "Access-Control-Allow-Headers": "Content-Type" };
-
-      const balanceFrom = await client.getAllBalances(
-        account.address
-      );
-      if (balanceFrom.length > 0) {
-        setBalanceFrom(balanceFrom[0].amount);
-      } else {
-        setBalanceFrom("0");
+          
+        } else {
+          // Handle error case
+          console.log('API request failed');
+        }
+      } catch (error) {
+        // Handle error case
+        console.log('An error occurred', error);
       }
+
       setDecryptStatus("Succeeded...");
       setDecrypt(true);
     } catch (error) {
@@ -123,59 +121,48 @@ export default function ProfilePage() {
         };
       }
 
-      const wallet = await Secp256k1HdWallet.fromMnemonic(decryptedMnemonic, {
-        prefix: PREFIX,
-      });
-      const [account] = await wallet.getAccounts();
-
-      setAddressFrom(account.address);
-
-      const aliceSigner = await DirectSecp256k1HdWallet.fromMnemonic(
-        decryptedMnemonic,
-        { prefix: PREFIX }
-      );
-      const client = await SigningStargateClient.connectWithSigner(
-        RPC_ENDPOINT,
-        aliceSigner,
-        {
-          gasPrice: GasPrice.fromString("0.025" + elysDemon),
-          gasLimits: { send: 100000 },
-          headers: {
-            "content-type": "application/json",
-          }
-        },
-
-      );
-
       setStatus("Sending...");
-      const fee = { amount: [{ denom: "uelys", amount: "2000", },], gas: "180000", };
 
-      const result = await client.sendTokens(account.address, addressTo, [{ denom: "uelys", amount: "2000", },], fee, "Test");
+      try {
+        const requestBody = {
+          decryptedMnemonic: decryptedMnemonic,
+          addressTo:addressTo,
+          amountTo:amountTo,
+        };
+  
+        console.log(addressTo,"D");
+        const response = await fetch('/api/transfer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+  
+        console.log(response);
+        if (response.ok) {
+          const res = await response.json();
+          if (res.balanceFrom.length > 0) {
+            setBalanceFrom(res.balanceFrom[0].amount);
+          } else {
+            setBalanceFrom("0");
+          }
 
-      const tx = await client.getTx(result.transactionHash);
-      console.log(tx);
-      if (tx.code === 0) {
-        setStatus("Sent...");
-      } else {
+          if (res.balanceTo.length > 0) {
+            setBalanceTo(res.balanceTo[0].amount);
+          } else {
+            setBalanceTo("0");
+          }
+          setStatus("Sent...");
+        } else {
+          // Handle error case
+          console.log('API request failed');
+          setStatus("Failed...");
+        }
+      } catch (error) {
         setStatus("Failed...");
-      }
-
-      const balanceFrom = await client.getAllBalances(
-        account.address
-      );
-      const balanceTo = await client.getAllBalances(
-        addressTo
-      );
-      if (balanceFrom.length > 0) {
-        setBalanceFrom(balanceFrom[0].amount);
-      } else {
-        setBalanceFrom("0");
-      }
-
-      if (balanceTo.length > 0) {
-        setBalanceTo(balanceTo[0].amount);
-      } else {
-        setBalanceTo("0");
+        // Handle error case
+        console.log('An error occurred', error);
       }
 
       setDecrypt(true);
