@@ -5,10 +5,6 @@ import crypto from "crypto";
 import CryptoJS from "crypto-js";
 import { useRouter } from 'next/router';
 
-const elysDemon = "uelys";
-const RPC_ENDPOINT = "https://rpc.testnet.elys.network/";
-const PREFIX = "elys";
-
 export default function ProfilePage() {
 
   const router = useRouter();
