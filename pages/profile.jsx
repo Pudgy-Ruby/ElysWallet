@@ -3,9 +3,6 @@ import Link from "next/link";
 import React, { useState } from "react";
 import crypto from "crypto";
 import CryptoJS from "crypto-js";
-import { GasPrice, Secp256k1HdWallet } from "@cosmjs/launchpad";
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
-import { SigningStargateClient } from "@cosmjs/stargate";
 import { useRouter } from 'next/router';
 
 const elysDemon = "uelys";
@@ -46,7 +43,7 @@ export default function ProfilePage() {
       .update(password)
       .digest("hex");
 
-      var balanceFrom;
+    var balanceFrom;
     try {
       setDecryptStatus("Decrypting...");
       const bytes = CryptoJS.AES.decrypt(encrypted, password_hash);
@@ -60,7 +57,7 @@ export default function ProfilePage() {
         const requestBody = {
           decryptedMnemonic: decryptedMnemonic,
         };
-  
+
         const response = await fetch('/api/decrypt', {
           method: 'POST',
           headers: {
@@ -68,7 +65,7 @@ export default function ProfilePage() {
           },
           body: JSON.stringify(requestBody),
         });
-  
+
         if (response.ok) {
           const res = await response.json();
           setAddressFrom(res.address);
@@ -77,7 +74,7 @@ export default function ProfilePage() {
           } else {
             setBalanceFrom("0");
           }
-          
+
         } else {
           // Handle error case
           console.log('API request failed');
@@ -126,11 +123,10 @@ export default function ProfilePage() {
       try {
         const requestBody = {
           decryptedMnemonic: decryptedMnemonic,
-          addressTo:addressTo,
-          amountTo:amountTo,
+          addressTo: addressTo,
+          amountTo: amountTo,
         };
-  
-        console.log(addressTo,"D");
+
         const response = await fetch('/api/transfer', {
           method: 'POST',
           headers: {
@@ -138,8 +134,7 @@ export default function ProfilePage() {
           },
           body: JSON.stringify(requestBody),
         });
-  
-        console.log(response);
+
         if (response.ok) {
           const res = await response.json();
           if (res.balanceFrom.length > 0) {
